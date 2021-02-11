@@ -1,13 +1,119 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+#root {
+  width: 100%;
+  background: #cccccc;
+  
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+#board {
+  margin: 0 auto;
+  text-align: center;
+}
+
+
+#mainDiv {
+  text-align: center;
+  display: flex;
+  justify-content: space-around;
+  background: #dfdfdf;
+  width: 95%;
+  height: 95%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 10px;
+}
+
+#mainDiv > div {
+  width: 80%;
+  background: #FFFFFF;
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+#prefabMenu {
+  border: 1px solid black;
+  display: flex;
+}
+
+.prefabColumn {
+  border: 1px solid black;
+  width: 100%;
+}
+
+.prefabColumn p {
+  border: 2px solid black;
+  margin: 0;
+}
+
+.prefabColumn ul {
+  padding: 0;
+  margin: 0;
+}
+
+.previewGrid * {
+  padding: 0;
+  margin: 0;
+}
+
+.previewGrid ul {
+  height: 10px;
+}
+
+.previewGrid li {
+  width: 8px;
+  height: 8px;
+  border: 1px solid black;
+  display: inline-block;
+  padding: 0;
+}
+
+.prefabPreview {
+  display: block;
+  border: 1px solid black;
+}
+
+.cell {
+  border: 1px solid #000000;
+  display: inline-block;
+  padding: 0;
+}
+
+#board .cell {
+  width: 35px;
+  height: 35px;
+}
+
+#board li {
+  display: inline-block;
+}
+
+.cell.alive {
+  background: #000000;
+}
+
+.cell.alive:hover {
+  border: 3px dotted #FFFFFF;
+}
+
+.cell.dead {
+  background: #FFFFFF;
+}
+
+.cell.dead:hover {
+  border: 3px dotted #000000;
+}
+
+.playButton {
+  width: 100px;
+  height: 50px;
+}
+
+.step {
+  width: 100px;
+  height: 50px;
+}
+
+.boardRow {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
 }
