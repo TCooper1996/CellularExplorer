@@ -17,7 +17,8 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
   pattern: 
   [[false, true, true, false],
     [true, false, false, true],
-    [false, true, true, false]]},
+    [false, true, true, false],
+    [false, false, false, false]]},
 
 
   //Tub
@@ -31,11 +32,15 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
 {groupName: "oscillators",
 patterns: [
   {name: "blinker",
-  pattern: [[true, true, true]]},
+    pattern: [[false, false, false],
+              [true, true, true],
+              [false,false,false]]},
 
   {name: "toad",
-  pattern: [[false, true, true, true],
-            [true, true, true, false]]}
+  pattern: [[false, false, false, false],
+            [false, true, true, true],
+            [true, true, true, false],
+            [false, false, false, false]]},
 ]},
 
 {groupName: "spaceships",
@@ -189,7 +194,7 @@ function PrefabPreview(props: patternObj){
   return (
     <>
       <PrefabPreviewGrid pattern={props.pattern}/>
-      <span>{props.name}</span>
+      <p>{props.name}</p>
     </>
   )
 }
