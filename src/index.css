@@ -1,7 +1,7 @@
 #root {
   width: 100%;
   background: #cccccc;
-  
+  text-align: center;
 }
 
 #board {
@@ -14,16 +14,15 @@
   text-align: center;
   display: inline-flex;
   justify-content: space-around;
-  background: #FFFFFF;
   width: 95%;
-  height: 90%;
+  height: 620px;
   margin: 20px;
 }
 
 #mainDiv > div {
   width: 80%;
-  background: #eee;
-  margin: 20px;
+  height: 100%;
+  margin: 0 auto;
 }
 
 #prefabMenu {
@@ -34,6 +33,7 @@
 .prefabColumn {
   border: 1px solid black;
   width: 29%;
+  background: #d4d4d4;
 }
 
 
@@ -62,9 +62,6 @@
   height: 100%;
 }
 
-.previewGrid ul {
-  height: 10px;
-}
 
 .previewGrid li {
   width: 100%;
@@ -77,10 +74,9 @@
 .prefabPreview {
   display: block;
   border: 1px solid black;
-  padding-top: 12.5%;
-  padding-bottom: 12.5%;
-  height: 120px;
   background: #FFFFFF;
+  position: relative;
+  padding-top: 100%;
 }
 
 
@@ -89,6 +85,9 @@
   border: 1px solid #000000;
   display: inline-block;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  
 }
 
 #board .cell {
@@ -104,7 +103,7 @@
   background: #000000;
 }
 
-.cell.alive:hover {
+#board .cell.alive:hover {
   border: 3px dotted #FFFFFF;
 }
 
@@ -112,8 +111,12 @@
   background: #FFFFFF;
 }
 
-.cell.dead:hover {
+#board .cell.dead:hover {
   border: 3px dotted #000000;
+}
+
+.shadow {
+  background: #cccccc;
 }
 
 .playButton {
@@ -132,4 +135,33 @@
   margin: auto;
   width: min-content;
   display: flex;
+}
+
+.boardGrid {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.boardGrid .boardRow {
+  width: 100%;
+  height: 100%;
+}
+
+.miniBoardGridContainer {
+  height: 60%;
+  width: 60%;
+  margin: auto;
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.prefabPreview p {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  margin: 0;
 }
