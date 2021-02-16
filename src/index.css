@@ -79,7 +79,10 @@
   padding-top: 100%;
 }
 
-
+#highlightedPrefabPreview {
+  border: 1px solid red;
+  background: #cfcfcf;
+}
 
 .cell {
   border: 1px solid #000000;
@@ -115,9 +118,10 @@
   border: 3px dotted #000000;
 }
 
-.shadow {
-  background: #cccccc;
+.cell.dead.shadow, .cell.dead.shadow {
+  background: #7a7a7a;
 }
+
 
 .playButton {
   width: 100px;
