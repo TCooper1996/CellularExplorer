@@ -12,7 +12,7 @@ class Game extends React.Component<{}, {size: number, board: booleanGrid, shadow
   
   constructor(props: {}){
     super(props)
-    const size = 14
+    const size = 15
 
     //2d board
     const board: booleanGrid = Array(size).fill(null).map(_ => {
@@ -143,10 +143,17 @@ class Game extends React.Component<{}, {size: number, board: booleanGrid, shadow
   PrefabsMenu(){
   return(
       <div id={"prefabMenu"}>
+        <div id={"prefabMenuHeaders"}>
+        {patterns.map((patternGroup) => {
+          return <span>{patternGroup.groupName}</span>
+        })}
+        </div>
+      <div id={"prefabScrollableArea"}>
         {patterns.map((patternGroup) => {
           
           return <this.PrefabColumn groupName={patternGroup.groupName} pattern={patternGroup.patterns}/>
         })}
+        </div>
       </div>
   )
 }
@@ -154,7 +161,6 @@ class Game extends React.Component<{}, {size: number, board: booleanGrid, shadow
 PrefabColumn(props: {groupName: string, pattern: patternObj[]}){
   return (
     <div className={"prefabColumn"}>
-      <p>{props.groupName}</p>
       <ul>
         {props.pattern.map((val, index) => {
           const highlightedTag = (this.state.currentPatternBuffered === val.name) ? "highlightedPrefabPreview" : ""
@@ -181,12 +187,13 @@ PrefabPreview(props: {name: string, pattern: booleanGrid}){
   BoardGrid(props: {grid: booleanGrid, gridType: GridType}){
 
     const isMainBoard = props.gridType === GridType.MainGrid
-    const className = (isMainBoard) ? "mainBoard boardGrid" : "miniBoard boardGrid"
+    const className = (isMainBoard) ? "boardGrid" : "miniBoard boardGrid"
     const shadowBoard = this.state.shadowBuffer
+    const id = (isMainBoard) ? "mainBoard" : undefined
 
 
     return(
-      <div className={className}>{
+      <div className={className} id={id}>{
       props.grid.map((rowArray, rowIndex) => {
         return( 
           <ul className={"boardRow"}>{
@@ -208,7 +215,6 @@ PrefabPreview(props: {name: string, pattern: booleanGrid}){
               }
             }
 
-            //const onClickMain = (isMainBoard) ? () => this.clickHandler(rowIndex, cIndex) : undefined
             return(
               <li key={rowIndex*rowArray.length + cIndex} className={className} onClick={onClickMain} onMouseEnter={onMouseEnter}>
                 {
@@ -229,11 +235,13 @@ PrefabPreview(props: {name: string, pattern: booleanGrid}){
     return(
       <>
         <div id={"mainDiv"}>
+          <div id={"mainBoardContainer"}>
           {this.renderBoard()}
-          <this.PrefabsMenu/>
-        </div>
           <PlayButton onClick={() => this.flipRunningState()} text={buttonText}></PlayButton>
           <button className={"step"} onClick={() => this.stepOnce()}>Step</button>
+          </div>
+          <this.PrefabsMenu/>
+        </div>
       </>
       )
   }

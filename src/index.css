@@ -15,27 +15,51 @@
   display: inline-flex;
   justify-content: space-around;
   width: 95%;
-  height: 620px;
+  height: 90vh;
   margin: 20px;
 }
 
 #mainDiv > div {
-  width: 80%;
-  height: 100%;
   margin: 0 auto;
 }
 
+#mainBoard {
+  width: 82vh;
+  height: 82vh;
+}
+
+#mainBoardContainer button {
+  width: 50%;
+  height: 8vh;
+  text-decoration: none;
+  border: 1px solid black;
+}
+
 #prefabMenu {
+  width: 40%;
+}
+
+#prefabMenuHeaders {
   display: flex;
-  justify-content: center;
+  height: 10%;
+}
+
+#prefabMenuHeaders span {
+  width: 100%;
+  border: 1px solid black;
+  background: #FFFFFF;
+}
+
+#prefabScrollableArea {
+  display: flex;
+  overflow: scroll;
+  height: 90%;
+  border: 1px solid black;
 }
 
 .prefabColumn {
-  border: 1px solid black;
-  width: 29%;
-  background: #d4d4d4;
+  width: 100%;
 }
-
 
 .prefabColumn ul {
   padding: 0;
@@ -120,17 +144,6 @@
 
 .cell.dead.shadow, .cell.dead.shadow {
   background: #7a7a7a;
-}
-
-
-.playButton {
-  width: 100px;
-  height: 50px;
-}
-
-.step {
-  width: 100px;
-  height: 50px;
 }
 
 .boardRow {

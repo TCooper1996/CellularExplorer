@@ -37,6 +37,11 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
               [false, true, true, true],
               [true, true, true, false],
               [false, false, false, false]]},
+    {name: "beacon",
+    pattern: [[true, true, false, false],
+              [true, true, false, false],
+              [false, false, true, true],
+              [false, false, true, true]]}
   ]},
   
   {groupName: "spaceships",
@@ -44,7 +49,21 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
     {name: "glider",
     pattern: [[false, true, false],
               [false, false, true],
-              [true, true, true]]}
+              [true, true, true]]},
+
+    {name: "lightweight spaceship",
+    pattern: [[false,true,true,true,true],
+              [true,false,false,false,true],
+              [false, false,false,false,true],
+              [true,false,false,true,false],
+              [false,false,false,false,false]]},
+
+    {name: "middleweight spaceship",
+    pattern: [[false,true,true,true,true,true],
+              [true,false,false,false,false,true],
+              [false,false,false,false,false,true],
+              [true,false,false,false,true,false],
+              [false,false,true,false,false,false]]},
   ]}]
 
   export {patterns}
