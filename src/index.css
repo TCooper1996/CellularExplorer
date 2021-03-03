@@ -15,8 +15,8 @@
   display: inline-flex;
   justify-content: space-around;
   width: 95%;
-  height: 90vh;
-  margin: 20px;
+  height: 75vh;
+  margin: 40px;
 }
 
 #mainDiv > div {
@@ -25,7 +25,6 @@
 
 #mainBoard {
   width: 82vh;
-  height: 82vh;
 }
 
 #mainBoardContainer button {
@@ -114,7 +113,6 @@
   padding: 0;
   width: 100%;
   height: 100%;
-  
 }
 
 #board .cell {
@@ -181,4 +179,29 @@
   bottom: 0;
   width: 100%;
   margin: 0;
+}
+
+/*--------- Elementary Board--------------*/
+#ElementaryMainDiv {
+  width: 80vw;
+  margin: auto;
+}
+
+
+#ElementaryMainDiv .cell {
+  width: 2vw;
+  height: 2vw;
+}
+
+/*--------- Menu Bar -----------*/
+#menuBar {
+  display: flex;
+  padding-left: 5vw;
+  padding-right: 5vw;
+  height: 6vh;
+}
+
+#menuBar button {
+  width: 100%;
+  height: 100%;
 }
