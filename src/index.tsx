@@ -2,20 +2,15 @@ import React, {useState, SyntheticEvent} from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import {patterns} from './cellPatterns'
-import { isExternalModuleNameRelative, isPropertySignature, isThisTypeNode } from 'typescript';
 import Slider from '@mui/material/Slider';
 
-const prefabContainerWidth = 9
 const ConwayBoardMinSize = 15
 const ConwayBoardMaxSize = 30
-const getPrefabContainerPaddedWidth = () => (prefabContainerWidth-1)
-const floatToVW= (num:number):string => num + "vw"
 
 type BooleanGrid = boolean[][]
 type CellGrid = Cell[][]
 
 function App(props:{}){
-  //const apps = [{component:Conway}, {component:Wolfram}]
 const apps = [{name: "Conway", component: <Conway></Conway>}, {name: "Elementary", component: <Elementary></Elementary>}]
 
   const [appIndex, setAppIndex] = useState(0)
@@ -51,6 +46,10 @@ const GridMap = (grid:CellGrid, func: (cell:Cell, row:number, col:number) => Cel
   return grid.map((row, rowInd) => row.map((cell, colInd) => func(cell, rowInd, colInd)))
 }
 
+const IndicesInBounds = (x:number, y:number, xMax:number, yMax:number) => 
+      x >= 0 && y >= 0
+      && x <= xMax && y <= yMax 
+
 
 
 class Conway extends React.Component<{}, {size: number, board: CellGrid, running: boolean, timer: NodeJS.Timeout, dragBuffer?: BooleanGrid, currentPatternBuffered: string}>{
@@ -66,6 +65,7 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
     const timer = setInterval(() => this.playButtonHandler(), 500)
 
     this.BoardGrid = this.BoardGrid.bind(this)
+    this.MainBoardCell = this.MainBoardCell.bind(this)
     this.PrefabBoardGrid = this.PrefabBoardGrid.bind(this)
     this.PrefabsMenu = this.PrefabsMenu.bind(this)
     this.adjustSize = this.adjustSize.bind(this)
@@ -76,7 +76,7 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
 
   adjustSize(event: Event, value: number|number[]){
     const size = value as number
-    if (size == this.state.board.length)
+    if (size === this.state.board.length)
     {
       return
     }
@@ -112,20 +112,32 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
     }
   }
 
-  clearBufferAndShadow(){
-
-    const unshadowedBoard = GridMap(this.state.board, 
+  // Set shadow state of each cell to false, removing the shadow cast by prefabs when the mouse hovers over the main board.
+  unShadowBoard(){
+    return GridMap(this.state.board, 
       (cell, _, __) => {return {isAlive: cell.isAlive, isShadowed:false}}
       )
-    this.setState({dragBuffer:undefined, currentPatternBuffered: "", board: unshadowedBoard})
+
+  }
+
+  // Called when the mouse leaves the main board to remove the shadow cast be a selected prefab.
+  clearShadowBoard(){
+    this.setState({board: this.unShadowBoard()})
+  }
+
+  clearBufferAndShadow(){
+
+    this.setState({dragBuffer:undefined, currentPatternBuffered: "", board: this.unShadowBoard()})
   }
 
   // Occurs when the main grid is clicked and a prefab is currently selected.
   // Sets the living state of each cell to its shadowed state, effectively pasting the prefab onto the grid.
   copyShadowBuffer(){
-    const board = this.state.board.map((row, rInd) => 
-      row.map((cell, cInd) => {return {isAlive: cell.isShadowed, isShadowed: cell.isShadowed}})
-    )
+    const board = GridMap(this.state.board, 
+      (cell, _, __) => {
+        return {isAlive: cell.isShadowed || cell.isAlive, isShadowed: cell.isShadowed}
+      }
+      )
     this.setState({board: board})
   }
 
@@ -134,27 +146,24 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
   // This function should not affect the IsAlive state of each cell; just the isShadowed property. 
   
   cellHoverHandler(mouse_row: number, mouse_col: number){
-    if (this.state.dragBuffer){
+    if (this.state.dragBuffer === undefined){
+      return
+    }
+
       const dBuffer = this.state.dragBuffer
-      const isWithinGridBounds = (rInd:number, cInd:number) => 
-        rInd >= 0 && cInd >= 0
-        && rInd < dBuffer.length && cInd < dBuffer[0].length 
-      
-
-
       const board = GridMap(this.state.board, 
         (cell, row, col) => {
           const bRow = row - mouse_row
           const bCol = col - mouse_col
           return {
             isAlive: cell.isAlive,
-            isShadowed: isWithinGridBounds(bRow, bCol) && dBuffer[bRow][bCol]
+            isShadowed: IndicesInBounds(bRow, bCol, dBuffer.length-1, dBuffer[0].length-1) && dBuffer[bRow][bCol]
           }
         }
       )
 
       this.setState({board: board})
-      }
+      
 
   }
 
@@ -170,25 +179,27 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
 
   stepOnce(){
     const board = this.state.board;
-    const newBoard = board.map((rowArray, rowIndex) => {
-      return rowArray.map((cell, cIndex) => {
-        let neighbors = 0;
-        for (let r = -1; r < 2; r++ ){
-          for (let c = -1; c < 2; c++ ){
-            const neighborRow = rowIndex - r
-            const neighborCol = cIndex - c
-            if (0 <= neighborRow && neighborRow < rowArray.length // Ensure valid row
-               && 0 <= neighborCol && neighborCol < rowArray.length // Ensure valid column
-               && !(neighborRow === rowIndex && cIndex === neighborCol) // Do not count self as neighbor
-               && board[neighborRow][neighborCol]){ //Only alive cells are neighbors
-                neighbors += 1
-            }
-          }
-        }
+    const size = board.length
+    // Get list of all neighboring positions
+    const getNeighbors = (centerX:number, centerY:number) => 
+      [-1, 0, 1]
+      .flatMap((x, _, arr) => 
+        arr.map(y => {return {x: x+centerX, y:y+centerY}})) // Get all combinations of [-1, 0, 1]
+      .filter(pos => !(pos.x === centerX && pos.y === centerY)) // Remove the position {x:centerX, y:centerY} because it is the center cell, not a neighbor.
+
+    // Returns a new cell from existing cell whose isAlive state is set according to the number of living neighbors
+    const judgeCell = (cell:Cell, rowIndex:number, cIndex:number) => {
+        const neighbors = getNeighbors(rowIndex, cIndex).reduce((acc, next) => 
+        IndicesInBounds(next.x, next.y, size-1, size-1) && board[next.x][next.y].isAlive 
+        ? acc+1 
+        : acc, 
+        0)
         return {isAlive:judge(cell.isAlive, neighbors), isShadowed:cell.isShadowed}
-      })
-    })
-    this.setState({board: newBoard})
+
+    }
+
+    
+    this.setState({board: GridMap(board, judgeCell)})
   }
 
 
@@ -246,39 +257,45 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
 
     const className = "boardGrid"
     const id = "mainBoard"
-    const getCellClassName = (cell: Cell) => "cell"
-          + (cell.isAlive ? " alive" : " dead")
-          + (cell.isShadowed ? " shadow" : "")
+    const size = props.grid.length
+    
 
     return(
-      <div className={className} id={id}>{
+      <div className={className} id={id} onMouseLeave={() => this.clearShadowBoard()}>{
       props.grid.map((rowArray, rowIndex) => {
+          console.log(rowIndex)
         return( 
           <ul key={rowIndex} className={"boardRow"}>{
           rowArray.map((cell, cIndex) => {
-            let className = getCellClassName(cell)
 
-            let onMouseEnter = undefined
-            let onClickMain = undefined
-              if (this.state.currentPatternBuffered === ""){
-                onClickMain = () => this.clickHandler(rowIndex, cIndex)
-              }else{
-                onMouseEnter = () => this.cellHoverHandler(rowIndex, cIndex)
-                onClickMain = () => this.copyShadowBuffer()
-              }
-
-            return(
-              <li key={rowIndex*rowArray.length + cIndex} className={className} onClick={onClickMain} onMouseEnter={onMouseEnter}>
-                {
-                }
-              </li>
-            )
-          })}
+            return <this.MainBoardCell cell={cell} rInd={rowIndex} cInd={cIndex} cellKey={rowIndex*size+cIndex}/>
+            })}
           </ul>
-      )})}
+        )})}
         </div>
         )
   }
+
+  MainBoardCell(props: {cell:Cell, rInd:number, cInd:number, cellKey:number}){
+    const className = "cell"
+          + (props.cell.isAlive ? " alive" : " dead")
+          + (props.cell.isShadowed ? " shadow" : "")
+
+      let onMouseEnter = undefined
+      let onClickMain = undefined
+        if (this.state.currentPatternBuffered === ""){
+          onClickMain = () => this.clickHandler(props.rInd, props.cInd)
+        }else{
+          onMouseEnter = () => this.cellHoverHandler(props.rInd, props.cInd)
+          onClickMain = () => this.copyShadowBuffer()
+        }
+
+      return(
+        <li key={props.cellKey} className={className} onClick={onClickMain} onMouseEnter={onMouseEnter}/>
+      )
+
+  }
+
   
   PrefabBoardGrid(props: {name: string; grid: boolean[][]}){
 
@@ -301,10 +318,7 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
           rowArray.map((c, cIndex) => {
             let className = c ? "alive cell" : "dead cell";
             return(
-              <ul key={rowIndex*rowArray.length + cIndex} className={className}>
-                {
-                }
-              </ul>
+              <ul key={rowIndex*rowArray.length + cIndex} className={className}/>
             )
           })}
           </ul>
