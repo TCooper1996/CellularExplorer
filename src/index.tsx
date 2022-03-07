@@ -2,10 +2,16 @@ import React, {useState, SyntheticEvent} from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import {patterns} from './cellPatterns'
+import { isExternalModuleNameRelative, isPropertySignature, isThisTypeNode } from 'typescript';
+import Slider from '@mui/material/Slider';
 
-type booleanGrid = boolean[][]
-type patternObj = {name: string, pattern: booleanGrid}
-enum GridType {MainGrid, Minigrid}
+const prefabContainerWidth = 9
+const ConwayBoardMinSize = 15
+const ConwayBoardMaxSize = 30
+const getPrefabContainerPaddedWidth = () => (prefabContainerWidth-1)
+const floatToVW= (num:number):string => num + "vw"
+
+type booleanGrid = Cell[][]
 
 function App(props:{}){
   //const apps = [{component:Conway}, {component:Wolfram}]
@@ -18,7 +24,7 @@ const apps = [{name: "Conway", component: <Conway></Conway>}, {name: "Elementary
       <div id={"menuBar"}>
         {apps.map((app, ind) => {
           const onClick = () => {setAppIndex(ind)}
-        return <button onClick={onClick}>{apps[ind].name}</button>
+        return <button key={app.name} onClick={onClick}>{apps[ind].name}</button>
         })}
       </div>
 
@@ -29,16 +35,21 @@ const apps = [{name: "Conway", component: <Conway></Conway>}, {name: "Elementary
   )
 }
 
+interface Cell{
+  isAlive:boolean
+  isShadowed: boolean
+}
 
-class Conway extends React.Component<{}, {size: number, board: booleanGrid, shadowBuffer: booleanGrid, running: boolean, timer: NodeJS.Timeout, dragBuffer?: booleanGrid, currentPatternBuffered?: string}>{
+
+class Conway extends React.Component<{}, {size: number, board: booleanGrid, running: boolean, timer: NodeJS.Timeout, dragBuffer?: booleanGrid, currentPatternBuffered: string}>{
   
   constructor(props: {}){
     super(props)
-    const size = 15
+    
 
     //2d board
-    const board: booleanGrid = Array(size).fill(null).map(_ => {
-      return Array(size).fill(false)
+    const board: booleanGrid = Array(ConwayBoardMinSize).fill(null).map(_ => {
+      return Array(ConwayBoardMinSize).fill({isAlive:false, isShadowed:false})
     })
 
     const shadowBoard = board
@@ -46,23 +57,39 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, shad
     const timer = setInterval(() => this.playButtonHandler(), 500)
 
     this.BoardGrid = this.BoardGrid.bind(this)
+    this.PrefabBoardGrid = this.PrefabBoardGrid.bind(this)
     this.PrefabsMenu = this.PrefabsMenu.bind(this)
-    this.PrefabColumn = this.PrefabColumn.bind(this)
-    this.PrefabPreview = this.PrefabPreview.bind(this)
+    this.adjustSize = this.adjustSize.bind(this)
+    //this.RenderSizeSlider = this.RenderSizeSlider.bind(this)
+    //this.PrefabColumn = this.PrefabColumn.bind(this)
+    //this.PrefabPreview = this.PrefabPreview.bind(this)
 
-    this.state = {currentPatternBuffered: undefined, size: size, board: board, running: false, timer: timer, dragBuffer: undefined, shadowBuffer: shadowBoard}
+    this.state = {currentPatternBuffered: "", size: ConwayBoardMinSize, board: board, running: false,
+     timer: timer, dragBuffer: undefined}
+  }
+
+  adjustSize(event: Event, value: number|number[]){
+    const oldBoard = this.state.board
+
+    const newBoard: booleanGrid = Array(value as number).fill(null)
+        .map((row,rowInd) => Array(value as number).fill(false)
+        .map((col,colInd) => (rowInd < oldBoard.length) ? oldBoard[rowInd][colInd] : {isAlive:false, isShadowed:false}))
+
+    this.setState({board:newBoard})
+    
   }
 
 
   clickHandler(row: number, column: number){
     const board = this.state.board
-    board[row][column] = !board[row][column]
+    board[row][column].isAlive = !board[row][column].isAlive
     this.setState({board: board})
   }
 
-  clickHandlerPrefabGrid(grid: booleanGrid, name: string){
+  clickHandlerPrefabGrid(grid: boolean[][], name: string){
     if (!this.state.currentPatternBuffered || this.state.currentPatternBuffered !== name){
-      this.setState({dragBuffer: grid, currentPatternBuffered: name})
+      const updatedBoard = this.state.board.map((row, rowInd) => row.map((cell, colInd) => {return {isAlive:cell.isAlive, isShadowed:grid[rowInd][colInd]}}))
+      this.setState({board: updatedBoard, currentPatternBuffered: name})
 
     }else if (this.state.currentPatternBuffered === name){
       this.clearBufferAndShadow()
@@ -71,49 +98,46 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, shad
   }
 
   clearBufferAndShadow(){
-    const emptyBoard = this.state.shadowBuffer.map(row => {
-      return row.map(_ => false)
+
+    const unshadowedBoard = this.state.board.map(row => {
+      return row.map(cell => {return {isAlive:cell.isAlive, isShadowed:false}})
     })
-    this.setState({dragBuffer: undefined, currentPatternBuffered: undefined, shadowBuffer: emptyBoard})
+    this.setState({currentPatternBuffered: "", board: unshadowedBoard})
   }
 
   // Write the contents of the shadow buffer to the main grid.
   // Maintain existing data
   copyShadowBuffer(){
-    const sBoard = this.state.shadowBuffer
     const board = this.state.board.map((row, rInd) => 
-      row.map((cell, cInd) => cell || sBoard[rInd][cInd])
+      row.map((cell, cInd) => {return {isAlive: cell.isShadowed, isShadowed: cell.isShadowed}})
     )
     this.setState({board: board})
   }
 
 
   // This function is called when cells on the main board have a prefab dragged over them
-  // This function takes the cell that the mouse is currently on, in the form if its row and column, 
-  // and maps the cell pattern currently in the drag buffer onto the main grid, with the top-left most 
-  // alive cell in the dragBuffer being mapped onto the cell that the mouse is on.
+  // This function effectively pastes the selected prefab onto the board starting at the mouses-position.
   cellHoverHandler(mouse_row: number, mouse_col: number){
     if (this.state.dragBuffer){
       const size = this.state.size
-      const dSize = this.state.dragBuffer.length
+      const rows = this.state.dragBuffer.length
+      const cols = this.state.dragBuffer[0].length
       const dBuffer = this.state.dragBuffer
 
-      // Identify top-left most living cell in the dragBuffer
-      let offset = 0;
-      for (let i = 0; i < dSize; i ++){
-        if (dBuffer[i][i]){
-          offset = i;
-          break;
+      const updateCell = (cell:Cell, row:number, col:number) => {
+        return {isAlive: row+mouse_row,
+                isShadowed:     
         }
       }
 
       // Get copy of 2d board.
-      const board = Array(size).fill(null).map(_ => Array(size).fill(false))
+      const board = this.state.board.map((row, rowInd) => 
+              row.map((col, colInd) => ))
 
-      for (let row = 0; row < dSize; row ++){
-        for (let col = 0; col < dSize; col ++){
-          let finalRow = row + mouse_row - offset
-          let finalCol = col + mouse_col - offset
+      for (let row = 0; row < rows; row ++){
+        for (let col = 0; col < cols; col ++){
+          let finalRow = row + mouse_row
+          let finalCol = col + mouse_col
           if (dBuffer[row][col] && board.length > finalRow && board[0].length > finalCol){
             board[finalRow][finalCol] = true
           }
@@ -152,90 +176,91 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, shad
             }
           }
         }
-        return judge(cell, neighbors)
+        return {isAlive:judge(cell.isAlive, neighbors), isShadowed:cell.isShadowed}
       })
     })
     this.setState({board: newBoard})
   }
 
+
   renderBoard(){
-    return <this.BoardGrid grid={this.state.board} gridType={GridType.MainGrid}/>
+    return <this.BoardGrid grid={this.state.board}/>
   }
 
   PrefabsMenu(){
-  return(
+    interface Automaton{
+      pos: [number, number]
+      grid: boolean[][];
+      name: string;
+    }
+    const xDist = 20
+    const yDist = 10
+
+    const CalcPos: (ind:number) => [number, number] = (ind:number) => {
+      const x = (ind < 3 || ind > 5) ?  -xDist + Math.floor(ind/3)*xDist : -12 + (ind%3)*12
+      const y = (ind < 3 || ind > 5) ? (ind%3)*10 : 30
+      
+      return [x,y]
+    }
+    const patternList = patterns.flatMap(p => p.patterns)
+    const angle = (Math.PI)/(patternList.length-1)
+    /*const automata = patternList.map((a, ind): Automaton => ({x: Math.cos(Math.PI+angle*ind)*20, y: Math.sin(angle*ind)*25+10, grid: a.pattern, name:a.name}))*/
+    const automata = patternList.map((a, ind): Automaton => ({pos:CalcPos(ind), grid: a.pattern, name:a.name}))
+
+    return(
       <div id={"prefabMenu"}>
-        <div id={"prefabMenuHeaders"}>
-        {patterns.map((patternGroup) => {
-          return <span>{patternGroup.groupName}</span>
-        })}
-        </div>
-      <div id={"prefabScrollableArea"}>
-        {patterns.map((patternGroup) => {
-          
-          return <this.PrefabColumn groupName={patternGroup.groupName} pattern={patternGroup.patterns}/>
-        })}
-        </div>
-      </div>
-  )
-}
+        {
+         automata.map(a => {
 
-PrefabColumn(props: {groupName: string, pattern: patternObj[]}){
-  return (
-    <div className={"prefabColumn"}>
-      <ul>
-        {props.pattern.map((val, index) => {
-          const highlightedTag = (this.state.currentPatternBuffered === val.name) ? "highlightedPrefabPreview" : ""
-          return <li className={"prefabPreview"} id={highlightedTag} key={val.name} onClick={() => this.clickHandlerPrefabGrid(val.pattern, val.name)}>
-            <this.PrefabPreview name={val.name} pattern={val.pattern}/>
+          const containerWidth = floatToVW(prefabContainerWidth)
+          const containerPaddedWidth = floatToVW(getPrefabContainerPaddedWidth())
+          const fontSize = a.name.length > 9 ? "0.5vw" : "1vw"
+          const prefabContainerClassName = "prefabContainer" + (this.state.currentPatternBuffered.toUpperCase() === a.name.toUpperCase() ? " selectedPrefab" : "")
+           return( 
+             <li key={a.name} className="prefabAnchor" style={{left:a.pos[0]+"vw", top:a.pos[1]+"vw"}}>
+                <div className={prefabContainerClassName} onClick={() => this.clickHandlerPrefabGrid(a.grid, a.name)}>
+                      <div className="prefabNameContainer">
+                        <p className="prefabName" style={{fontSize:fontSize}}>{a.name.toLocaleUpperCase()}</p>
+                        <div className ="prefabNameOverlay"></div>
+                      </div>
+                      <div className="prefabContainerWrapper"><this.PrefabBoardGrid grid={a.grid} name={a.name}/></div>
+                </div>
             </li>
-        })}
-      </ul>
-    </div>
-  )
-}
+           )
+         })
+        }
+        </div>
+    )
+  }
 
-PrefabPreview(props: {name: string, pattern: booleanGrid}){
-  return (
-    <>
-    <div className={"miniBoardGridContainer"}>
-    <this.BoardGrid grid={props.pattern}  gridType={GridType.Minigrid}/>
-    </div>
-    <p>{props.name}</p>
-    </>
-  )
-}
 
-  BoardGrid(props: {grid: booleanGrid, gridType: GridType}){
 
-    const isMainBoard = props.gridType === GridType.MainGrid
-    const className = (isMainBoard) ? "boardGrid" : "miniBoard boardGrid"
+  BoardGrid(props: {grid: booleanGrid}){
+
+    const className = "boardGrid"
     const shadowBoard = this.state.shadowBuffer
-    const id = (isMainBoard) ? "mainBoard" : undefined
+    const id = "mainBoard"
 
 
     return(
       <div className={className} id={id}>{
       props.grid.map((rowArray, rowIndex) => {
         return( 
-          <ul className={"boardRow"}>{
+          <ul key={rowIndex} className={"boardRow"}>{
           rowArray.map((c, cIndex) => {
             let className = c ? "alive cell" : "dead cell";
-            if (isMainBoard && shadowBoard[rowIndex][cIndex]){
+            if (shadowBoard[rowIndex][cIndex]){
               className = className + " shadow"
             }
 
             let onMouseEnter = undefined
             let onClickMain = undefined
-            // Only the main board has an event attatched to the <li> element.
-            if (isMainBoard){
               if (this.state.currentPatternBuffered){
                 onMouseEnter = () => this.cellHoverHandler(rowIndex, cIndex)
                 onClickMain = () => this.copyShadowBuffer()
               }else{
                 onClickMain = () => this.clickHandler(rowIndex, cIndex)
               }
-            }
 
             return(
               <li key={rowIndex*rowArray.length + cIndex} className={className} onClick={onClickMain} onMouseEnter={onMouseEnter}>
@@ -249,17 +274,53 @@ PrefabPreview(props: {name: string, pattern: booleanGrid}){
         </div>
         )
   }
+  
+  PrefabBoardGrid(props: {name: string; grid: boolean[][]}){
+
+    const className = "prefabBoardGrid"
+    const numOfRows = props.grid.length
+    const numOfCols = props.grid[0].length
+    const width = Math.min(numOfCols / numOfRows, 1)
+    const height = Math.min(numOfRows / numOfCols, 1)
+    const paddingTop = height == 1 ? 0 : (1 - height)/2
+    const paddingLeft = width == 1 ? 0 : (1 - width)/2
+    const fmt = (x:number) => x*100+"%"
+
+
+    return(
+      <div className={className}
+      style={{width: fmt(width), height: fmt(height), paddingTop: fmt(paddingTop), paddingLeft:fmt(paddingLeft)}}>{
+      props.grid.map((rowArray, rowIndex) => {
+        return( 
+          <ul key={rowIndex} className={"boardRow"}>{
+          rowArray.map((c, cIndex) => {
+            let className = c ? "alive cell" : "dead cell";
+            return(
+              <ul key={rowIndex*rowArray.length + cIndex} className={className}>
+                {
+                }
+              </ul>
+            )
+          })}
+          </ul>
+      )})}
+        </div>
+        )
+  }
+
 
 
   render(){
     let running = this.state.running;
-    let buttonText = (running) ? "Pause": "Play"
+    let playButtonText = (running) ? "Pause": "Play"
+    const playButtonClass = "playButton" + (running ? " active" : "")
     return(
       <>
         <div id={"mainDiv"}>
           <div id={"mainBoardContainer"}>
+            <Slider onChange={this.adjustSize} defaultValue={ConwayBoardMinSize} min={ConwayBoardMinSize} max={ConwayBoardMaxSize} step={1} valueLabelDisplay={"auto"}/>
           {this.renderBoard()}
-          <PlayButton onClick={() => this.flipRunningState()} text={buttonText}></PlayButton>
+          <button className={playButtonClass} onClick={() => this.flipRunningState()}>{playButtonText}</button>
           <button className={"step"} onClick={() => this.stepOnce()}>Step</button>
           </div>
           <this.PrefabsMenu/>

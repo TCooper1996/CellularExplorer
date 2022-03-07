@@ -14,13 +14,13 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
     [[false, true, true, false],
       [true, false, false, true],
       [false, true, true, false],
-      [false, false, false, false]]},
+      ]},
   
   
     //Tub
     {name: "tub",
     pattern:
-    [[false, true, false],
+    [ [false, true, false],
       [true, false, true],
     [false, true, false]]}
   ]},
@@ -28,15 +28,15 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
   {groupName: "oscillators",
   patterns: [
     {name: "blinker",
-      pattern: [[false, false, false],
-                [true, true, true],
-                [false,false,false]]},
+      pattern: [[true],
+                [true],
+                [true]]},
   
     {name: "toad",
-    pattern: [[false, false, false, false],
+    pattern: [
               [false, true, true, true],
               [true, true, true, false],
-              [false, false, false, false]]},
+              ]},
     {name: "beacon",
     pattern: [[true, true, false, false],
               [true, true, false, false],
@@ -56,7 +56,7 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
               [true,false,false,false,true],
               [false, false,false,false,true],
               [true,false,false,true,false],
-              [false,false,false,false,false]]},
+              ]},
 
     {name: "middleweight spaceship",
     pattern: [[false,true,true,true,true,true],

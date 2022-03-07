@@ -1,6 +1,6 @@
 #root {
   width: 100%;
-  background: #cccccc;
+  background: #FFFFFF;
   text-align: center;
 }
 
@@ -12,94 +12,180 @@
 
 #mainDiv {
   text-align: center;
-  display: inline-flex;
+  display: grid;
   justify-content: space-around;
-  width: 95%;
-  height: 75vh;
   margin: 40px;
 }
 
 #mainDiv > div {
+  grid-row: 1;
+  grid-column: 1;
   margin: 0 auto;
 }
 
 #mainBoard {
-  width: 82vh;
+  width: 25vw;
+  height: 25vw;
 }
 
 #mainBoardContainer button {
   width: 50%;
-  height: 8vh;
+  height: 2vw;
   text-decoration: none;
   border: 1px solid black;
+  cursor: pointer;
+  font-family: "Open Sans", Courier, monospace;
+  font-weight: 800;
+  font-size: medium;
+  position: relative;
+  box-shadow: rgba(0, 0, 0, .2) 15px 28px 25px -18px;
+}
+
+
+#mainBoardContainer .active{
+  background-color: #cfcfcf;
+  box-shadow: none;
+
 }
 
 #prefabMenu {
-  width: 40%;
+  position: relative;
 }
 
-#prefabMenuHeaders {
+/* prefabAnchor is a list item and is the first child of prefabMenu. It has a size of 0,0 for the sake positioning the center of each prefab around a circle. 
+It only has one direct child, the prefabContainer, but prefabAnchor is display:flex so that the child is centered in the prefabAnchor.*/
+.prefabAnchor{
   display: flex;
-  height: 10%;
+  justify-content: center;
+  height: 0;
+  width: 0;
+  position: absolute;
 }
 
-#prefabMenuHeaders span {
-  width: 100%;
-  border: 1px solid black;
-  background: #FFFFFF;
+.prefabContainerWrapper{
+  width: 80%;
+  height: 80%;
+  margin: auto;
+  z-index: inherit;
 }
 
-#prefabScrollableArea {
-  display: flex;
-  overflow: scroll;
-  height: 90%;
-  border: 1px solid black;
-}
-
-.prefabColumn {
-  width: 100%;
-}
-
-.prefabColumn ul {
-  padding: 0;
-  margin: 0;
-}
-
-.previewGrid * {
-  padding: 0;
-  margin: 0;
-}
-
-.previewGrid {
+/*The prefabContainer is the div inside of a prefabAnchor. It has a fixed size regardless of the size of the autamata it holds.
+  flex-shrink must be 0 to show the full size, as the parent is always a dimensionless point.
+  This is the selector that determines the size of the prefabs. It contains the prefab itself, and its name.
+*/
+.prefabAnchor .prefabContainer{
+  width: 6vw;
+  height: 6vw;
+  flex-shrink: 0;
+  z-index: auto;
   display: flex;
   flex-direction: column;
-  width: 60%;
-  height: 80%;
-  margin-top: 10px;
+  background-color: #cfcfcf;
+  border-radius: 20px;
+
+/* CSS */
+  box-shadow: rgba(0, 0, 0, .2) 15px 28px 25px -18px;
+  color: #3c4043;
+  cursor: pointer;
+  display: inline-flex;
+  fill: currentcolor;
+  font-family: "Google Sans",Roboto,Arial,sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  justify-content: center;
+  letter-spacing: .25px;
+  line-height: normal;
+  overflow: visible;
+  position: relative;
+  text-align: center;
+  text-transform: none;
+  transition: box-shadow 280ms cubic-bezier(.4, 0, .2, 1),opacity 15ms linear 30ms,transform 270ms cubic-bezier(0, 0, .2, 1) 0ms;
+  --transition: all 235ms ease-in-out;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  will-change: transform,opacity;
+  z-index: 1;
+}
+
+.prefabAnchor .prefabContainer:hover{
+  box-shadow: rgba(0, 0, 0, .3) 2px 8px 8px -5px;
+  transform: translate3d(0, 2px, 0);
+}
+
+
+.selectedPrefab{
+  border-style: dashed;
+}
+
+
+
+.prefabContainer:hover{
+  opacity: 90%;
+
+}
+
+.prefabContainer .prefabNameOverlay{
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  position: absolute;
+  background-color: #cfcfcf;
+  border-radius: 20px;
+}
+
+.prefabContainer .prefabNameContainer{
+  border-radius: 20px;
+  bottom: 0%;
+  position: absolute;
+  width: 100%;
+  height: 3vw;
+
+}
+
+
+.prefabContainer .prefabName{
+  width: 100%;
+  height: 100%;
+  transition-property: bottom, opacity;
+  transition-duration: 0.7s;
+  position: absolute;
+  bottom: 0%;
+  z-index: inherit;
+  opacity: 0;
   margin-left: auto;
   margin-right: auto;
+  height: 2vw;
+  font-family: 'Open Sans', sans-serif, monospace;
+  font-size: 1vw;
+  font-weight: 800;
+  background-color: #cfcfff;
+  border-radius: 20px;
+  margin: auto;
 }
 
-.previewGrid .boardRow {
+.prefabContainer:hover .prefabName{
+  bottom: -100%;
+  opacity: 1;
+}
+
+
+/*The prefabBoardGrid contains a list of rows, each of which contains a list of the individual cells as list items.
+  The width and height are determined at runtime depending on the size of the autamata it represents.
+  It will take up the entirety of its parents width, height, or both depending on it's longest axis.
+  If it has the same width as height (same number of rows and columns) it takes its parents full width and height.
+  If it is wider than it is tall, it will take up its parents full width, and a portion of its parents height equal to
+  the ratio of the number of rows to the number of columns, and vice versa if it is taller than it is wide. */
+.prefabBoardGrid{
+  display: flex;
+  flex-direction: column;
+  --margin-left: auto;
+  --margin: auto;
+}
+
+.prefabBoardGrid ul{
   width: 100%;
   height: 100%;
-}
-
-
-.previewGrid li {
-  width: 100%;
-  height: 100%;
-  border: 1px solid #757575;
-  display: inline-block;
-  padding: 0;
-}
-
-.prefabPreview {
-  display: block;
-  border: 1px solid black;
-  background: #FFFFFF;
-  position: relative;
-  padding-top: 100%;
 }
 
 #highlightedPrefabPreview {
@@ -107,12 +193,30 @@
   background: #cfcfcf;
 }
 
+.sizeSlider .thumbClass{
+  height: 50px;
+  width: 1vw;
+  background-color: #000000;
+}
+
+
+.sizeSlider .trackClass{
+  height: 90px;
+  width: 100%;
+  background-color: #808080;
+}
+
+.sizeSlider{
+  height: 90px;
+}
+
 .cell {
-  border: 1px solid #000000;
+  border: 1px solid #808080;
   display: inline-block;
   padding: 0;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
 }
 
 #board .cell {
@@ -158,9 +262,16 @@
   height: 100%;
 }
 
+
 .boardGrid .boardRow {
   width: 100%;
   height: 100%;
+}
+
+.miniBoardGrid .boardRow{
+  width: 100%;
+  height: 100%;
+
 }
 
 .miniBoardGridContainer {
@@ -196,12 +307,15 @@
 /*--------- Menu Bar -----------*/
 #menuBar {
   display: flex;
-  padding-left: 5vw;
-  padding-right: 5vw;
+  width:50%;
   height: 6vh;
+  margin: auto;
 }
 
 #menuBar button {
   width: 100%;
   height: 100%;
+  font-weight: 800;
+  font-family: 'Open Sans', sans-serif, monospace;
+  cursor: pointer;
 }
