@@ -11,7 +11,8 @@ const ConwayBoardMaxSize = 30
 const getPrefabContainerPaddedWidth = () => (prefabContainerWidth-1)
 const floatToVW= (num:number):string => num + "vw"
 
-type booleanGrid = Cell[][]
+type BooleanGrid = boolean[][]
+type CellGrid = Cell[][]
 
 function App(props:{}){
   //const apps = [{component:Conway}, {component:Wolfram}]
@@ -40,19 +41,27 @@ interface Cell{
   isShadowed: boolean
 }
 
+const Create2DArray = (width:number, height?:number, val?:any) => {
+  const h = height === undefined ? width : height
+  return Array.from(Array(h), () =>
+      new Array(width).fill(val === undefined ? null : val)
+)}
 
-class Conway extends React.Component<{}, {size: number, board: booleanGrid, running: boolean, timer: NodeJS.Timeout, dragBuffer?: booleanGrid, currentPatternBuffered: string}>{
+const GridMap = (grid:CellGrid, func: (cell:Cell, row:number, col:number) => Cell) => { 
+  return grid.map((row, rowInd) => row.map((cell, colInd) => func(cell, rowInd, colInd)))
+}
+
+
+
+class Conway extends React.Component<{}, {size: number, board: CellGrid, running: boolean, timer: NodeJS.Timeout, dragBuffer?: BooleanGrid, currentPatternBuffered: string}>{
   
   constructor(props: {}){
     super(props)
     
 
     //2d board
-    const board: booleanGrid = Array(ConwayBoardMinSize).fill(null).map(_ => {
-      return Array(ConwayBoardMinSize).fill({isAlive:false, isShadowed:false})
-    })
+    const board: CellGrid = GridMap(Create2DArray(ConwayBoardMinSize, ConwayBoardMinSize), (_:Cell) => {return {isAlive:false, isShadowed:false}})
 
-    const shadowBoard = board
 
     const timer = setInterval(() => this.playButtonHandler(), 500)
 
@@ -60,20 +69,24 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
     this.PrefabBoardGrid = this.PrefabBoardGrid.bind(this)
     this.PrefabsMenu = this.PrefabsMenu.bind(this)
     this.adjustSize = this.adjustSize.bind(this)
-    //this.RenderSizeSlider = this.RenderSizeSlider.bind(this)
-    //this.PrefabColumn = this.PrefabColumn.bind(this)
-    //this.PrefabPreview = this.PrefabPreview.bind(this)
 
     this.state = {currentPatternBuffered: "", size: ConwayBoardMinSize, board: board, running: false,
      timer: timer, dragBuffer: undefined}
   }
 
   adjustSize(event: Event, value: number|number[]){
+    const size = value as number
+    if (size == this.state.board.length)
+    {
+      return
+    }
     const oldBoard = this.state.board
+    const mapCell = (_:Cell, row: number, col:number) => 
+          (row < oldBoard.length && col < oldBoard.length)
+          ? oldBoard[row][col]
+          : {isAlive:false, isShadowed:false}
 
-    const newBoard: booleanGrid = Array(value as number).fill(null)
-        .map((row,rowInd) => Array(value as number).fill(false)
-        .map((col,colInd) => (rowInd < oldBoard.length) ? oldBoard[rowInd][colInd] : {isAlive:false, isShadowed:false}))
+    const newBoard = GridMap(Create2DArray(size), mapCell)
 
     this.setState({board:newBoard})
     
@@ -86,10 +99,12 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
     this.setState({board: board})
   }
 
+  // This function is called when we click on a prefab. Grid is the grid representing the prefabs cells, and name is the automatatons name.
+  // We save the grid to a buffer in the state to use later when the mouse hovers over the main board.
   clickHandlerPrefabGrid(grid: boolean[][], name: string){
     if (!this.state.currentPatternBuffered || this.state.currentPatternBuffered !== name){
-      const updatedBoard = this.state.board.map((row, rowInd) => row.map((cell, colInd) => {return {isAlive:cell.isAlive, isShadowed:grid[rowInd][colInd]}}))
-      this.setState({board: updatedBoard, currentPatternBuffered: name})
+      
+      this.setState({dragBuffer:grid, currentPatternBuffered: name})
 
     }else if (this.state.currentPatternBuffered === name){
       this.clearBufferAndShadow()
@@ -99,14 +114,14 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
 
   clearBufferAndShadow(){
 
-    const unshadowedBoard = this.state.board.map(row => {
-      return row.map(cell => {return {isAlive:cell.isAlive, isShadowed:false}})
-    })
-    this.setState({currentPatternBuffered: "", board: unshadowedBoard})
+    const unshadowedBoard = GridMap(this.state.board, 
+      (cell, _, __) => {return {isAlive: cell.isAlive, isShadowed:false}}
+      )
+    this.setState({dragBuffer:undefined, currentPatternBuffered: "", board: unshadowedBoard})
   }
 
-  // Write the contents of the shadow buffer to the main grid.
-  // Maintain existing data
+  // Occurs when the main grid is clicked and a prefab is currently selected.
+  // Sets the living state of each cell to its shadowed state, effectively pasting the prefab onto the grid.
   copyShadowBuffer(){
     const board = this.state.board.map((row, rInd) => 
       row.map((cell, cInd) => {return {isAlive: cell.isShadowed, isShadowed: cell.isShadowed}})
@@ -116,35 +131,29 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
 
 
   // This function is called when cells on the main board have a prefab dragged over them
-  // This function effectively pastes the selected prefab onto the board starting at the mouses-position.
+  // This function should not affect the IsAlive state of each cell; just the isShadowed property. 
+  
   cellHoverHandler(mouse_row: number, mouse_col: number){
     if (this.state.dragBuffer){
-      const size = this.state.size
-      const rows = this.state.dragBuffer.length
-      const cols = this.state.dragBuffer[0].length
       const dBuffer = this.state.dragBuffer
+      const isWithinGridBounds = (rInd:number, cInd:number) => 
+        rInd >= 0 && cInd >= 0
+        && rInd < dBuffer.length && cInd < dBuffer[0].length 
+      
 
-      const updateCell = (cell:Cell, row:number, col:number) => {
-        return {isAlive: row+mouse_row,
-                isShadowed:     
-        }
-      }
 
-      // Get copy of 2d board.
-      const board = this.state.board.map((row, rowInd) => 
-              row.map((col, colInd) => ))
-
-      for (let row = 0; row < rows; row ++){
-        for (let col = 0; col < cols; col ++){
-          let finalRow = row + mouse_row
-          let finalCol = col + mouse_col
-          if (dBuffer[row][col] && board.length > finalRow && board[0].length > finalCol){
-            board[finalRow][finalCol] = true
+      const board = GridMap(this.state.board, 
+        (cell, row, col) => {
+          const bRow = row - mouse_row
+          const bCol = col - mouse_col
+          return {
+            isAlive: cell.isAlive,
+            isShadowed: isWithinGridBounds(bRow, bCol) && dBuffer[bRow][bCol]
           }
         }
-      }
+      )
 
-      this.setState({shadowBuffer: board})
+      this.setState({board: board})
       }
 
   }
@@ -195,15 +204,15 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
     }
     const xDist = 20
     const yDist = 10
+    const bottomYAxis = 30
 
     const CalcPos: (ind:number) => [number, number] = (ind:number) => {
       const x = (ind < 3 || ind > 5) ?  -xDist + Math.floor(ind/3)*xDist : -12 + (ind%3)*12
-      const y = (ind < 3 || ind > 5) ? (ind%3)*10 : 30
+      const y = (ind < 3 || ind > 5) ? (ind%3)*yDist : bottomYAxis
       
       return [x,y]
     }
     const patternList = patterns.flatMap(p => p.patterns)
-    const angle = (Math.PI)/(patternList.length-1)
     /*const automata = patternList.map((a, ind): Automaton => ({x: Math.cos(Math.PI+angle*ind)*20, y: Math.sin(angle*ind)*25+10, grid: a.pattern, name:a.name}))*/
     const automata = patternList.map((a, ind): Automaton => ({pos:CalcPos(ind), grid: a.pattern, name:a.name}))
 
@@ -212,8 +221,6 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
         {
          automata.map(a => {
 
-          const containerWidth = floatToVW(prefabContainerWidth)
-          const containerPaddedWidth = floatToVW(getPrefabContainerPaddedWidth())
           const fontSize = a.name.length > 9 ? "0.5vw" : "1vw"
           const prefabContainerClassName = "prefabContainer" + (this.state.currentPatternBuffered.toUpperCase() === a.name.toUpperCase() ? " selectedPrefab" : "")
            return( 
@@ -235,31 +242,29 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
 
 
 
-  BoardGrid(props: {grid: booleanGrid}){
+  BoardGrid(props: {grid: CellGrid}){
 
     const className = "boardGrid"
-    const shadowBoard = this.state.shadowBuffer
     const id = "mainBoard"
-
+    const getCellClassName = (cell: Cell) => "cell"
+          + (cell.isAlive ? " alive" : " dead")
+          + (cell.isShadowed ? " shadow" : "")
 
     return(
       <div className={className} id={id}>{
       props.grid.map((rowArray, rowIndex) => {
         return( 
           <ul key={rowIndex} className={"boardRow"}>{
-          rowArray.map((c, cIndex) => {
-            let className = c ? "alive cell" : "dead cell";
-            if (shadowBoard[rowIndex][cIndex]){
-              className = className + " shadow"
-            }
+          rowArray.map((cell, cIndex) => {
+            let className = getCellClassName(cell)
 
             let onMouseEnter = undefined
             let onClickMain = undefined
-              if (this.state.currentPatternBuffered){
+              if (this.state.currentPatternBuffered === ""){
+                onClickMain = () => this.clickHandler(rowIndex, cIndex)
+              }else{
                 onMouseEnter = () => this.cellHoverHandler(rowIndex, cIndex)
                 onClickMain = () => this.copyShadowBuffer()
-              }else{
-                onClickMain = () => this.clickHandler(rowIndex, cIndex)
               }
 
             return(
@@ -282,8 +287,8 @@ class Conway extends React.Component<{}, {size: number, board: booleanGrid, runn
     const numOfCols = props.grid[0].length
     const width = Math.min(numOfCols / numOfRows, 1)
     const height = Math.min(numOfRows / numOfCols, 1)
-    const paddingTop = height == 1 ? 0 : (1 - height)/2
-    const paddingLeft = width == 1 ? 0 : (1 - width)/2
+    const paddingTop = height === 1 ? 0 : (1 - height)/2
+    const paddingLeft = width === 1 ? 0 : (1 - width)/2
     const fmt = (x:number) => x*100+"%"
 
 
