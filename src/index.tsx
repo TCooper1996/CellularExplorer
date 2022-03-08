@@ -35,6 +35,11 @@ interface Cell{
   isAlive:boolean
   isShadowed: boolean
 }
+interface Automaton{
+  pos: [number, number]
+  grid: boolean[][];
+  name: string;
+}
 
 const Create2DArray = (width:number, height?:number, val?:any) => {
   const h = height === undefined ? width : height
@@ -67,8 +72,10 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
     this.BoardGrid = this.BoardGrid.bind(this)
     this.MainBoardCell = this.MainBoardCell.bind(this)
     this.PrefabBoardGrid = this.PrefabBoardGrid.bind(this)
+    this.PrefabButton = this.PrefabButton.bind(this)
     this.PrefabsMenu = this.PrefabsMenu.bind(this)
     this.adjustSize = this.adjustSize.bind(this)
+    this.adjustTime = this.adjustTime.bind(this)
 
     this.state = {currentPatternBuffered: "", size: ConwayBoardMinSize, board: board, running: false,
      timer: timer, dragBuffer: undefined}
@@ -91,6 +98,14 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
     this.setState({board:newBoard})
     
   }
+
+  adjustTime(event: Event, value:number|number[]){
+    const time = value as number
+    clearTimeout(this.state.timer)
+    this.setState({timer: setInterval(() => this.playButtonHandler(), time*1000)})
+  }
+
+
 
 
   clickHandler(row: number, column: number){
@@ -203,19 +218,20 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
   }
 
 
-  renderBoard(){
-    return <this.BoardGrid grid={this.state.board}/>
+
+  CompactSlider(props:{onChange:any, name:string, minVal:number, maxVal:number, defaultVal:number}){
+    return(
+    <div className={"SliderContainer"}>
+      <Slider className={"SliderControl"} onChange={props.onChange} min={props.minVal} max={props.maxVal} defaultValue={props.defaultVal}/>
+      <div className={"SliderLabel"}>{props.name}</div>
+    </div>
+    )
   }
 
   PrefabsMenu(){
-    interface Automaton{
-      pos: [number, number]
-      grid: boolean[][];
-      name: string;
-    }
     const xDist = 20
     const yDist = 10
-    const bottomYAxis = 30
+    const bottomYAxis = 32
 
     const CalcPos: (ind:number) => [number, number] = (ind:number) => {
       const x = (ind < 3 || ind > 5) ?  -xDist + Math.floor(ind/3)*xDist : -12 + (ind%3)*12
@@ -233,21 +249,27 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
          automata.map(a => {
 
           const fontSize = a.name.length > 9 ? "0.5vw" : "1vw"
-          const prefabContainerClassName = "prefabContainer" + (this.state.currentPatternBuffered.toUpperCase() === a.name.toUpperCase() ? " selectedPrefab" : "")
-           return( 
-             <li key={a.name} className="prefabAnchor" style={{left:a.pos[0]+"vw", top:a.pos[1]+"vw"}}>
-                <div className={prefabContainerClassName} onClick={() => this.clickHandlerPrefabGrid(a.grid, a.name)}>
-                      <div className="prefabNameContainer">
-                        <p className="prefabName" style={{fontSize:fontSize}}>{a.name.toLocaleUpperCase()}</p>
-                        <div className ="prefabNameOverlay"></div>
-                      </div>
-                      <div className="prefabContainerWrapper"><this.PrefabBoardGrid grid={a.grid} name={a.name}/></div>
-                </div>
-            </li>
-           )
+          const isSelected = this.state.currentPatternBuffered.toUpperCase() === a.name.toUpperCase()
+          const onClick = () => this.clickHandlerPrefabGrid(a.grid, a.name)
+          return <this.PrefabButton isSelected={isSelected} left={a.pos[0]+"vw"} top={a.pos[1]+"vw"} prefabName={a.name} prefabGrid={a.grid} fontSize={fontSize} onClick={onClick}/>
          })
         }
         </div>
+    )
+  }
+
+  PrefabButton(props: {isSelected:boolean, left:string, top:string, prefabName:string, prefabGrid:BooleanGrid, fontSize:string, onClick:any}){
+    const className = "prefabContainer" + (props.isSelected ? " selectedPrefab" : "")
+    return (
+      <li key={props.prefabName} className="prefabAnchor" style={{left:props.left, top:props.top}}>
+        <div className={className} onClick={props.onClick}>
+              <div className="prefabNameContainer">
+                <p className="prefabName" style={{fontSize:props.fontSize}}>{props.prefabName.toLocaleUpperCase()}</p>
+                <div className ="prefabNameOverlay"></div>
+              </div>
+              <div className="prefabContainerWrapper"><this.PrefabBoardGrid grid={props.prefabGrid} name={props.prefabName}/></div>
+        </div>
+    </li>
     )
   }
 
@@ -337,10 +359,14 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
       <>
         <div id={"mainDiv"}>
           <div id={"mainBoardContainer"}>
-            <Slider onChange={this.adjustSize} defaultValue={ConwayBoardMinSize} min={ConwayBoardMinSize} max={ConwayBoardMaxSize} step={1} valueLabelDisplay={"auto"}/>
-          {this.renderBoard()}
-          <button className={playButtonClass} onClick={() => this.flipRunningState()}>{playButtonText}</button>
-          <button className={"step"} onClick={() => this.stepOnce()}>Step</button>
+            <div id={"MainSliderContainer"}>
+            <this.CompactSlider onChange={this.adjustSize} name={"Size"} defaultVal={ConwayBoardMinSize} minVal={ConwayBoardMinSize} maxVal={ConwayBoardMaxSize}/>
+            <this.CompactSlider onChange={this.adjustTime} name={"Speed"} defaultVal={1} minVal={0.25} maxVal={3}/>
+
+            </div>
+            <this.BoardGrid grid={this.state.board}/>
+            <button className={playButtonClass} onClick={() => this.flipRunningState()}>{playButtonText}</button>
+            <button className={"step"} onClick={() => this.stepOnce()}>Step</button>
           </div>
           <this.PrefabsMenu/>
         </div>
@@ -348,6 +374,7 @@ class Conway extends React.Component<{}, {size: number, board: CellGrid, running
       )
   }
 }
+            //<Slider onChange={this.adjustSize} defaultValue={ConwayBoardMinSize} min={ConwayBoardMinSize} max={ConwayBoardMaxSize} step={1} valueLabelDisplay={"auto"}/>
 
 class Elementary extends React.Component<{}, {rule: string, size: number, stepFunc: (parents: boolean[]) => boolean}>{
   constructor(props: {}){
@@ -370,7 +397,6 @@ class Elementary extends React.Component<{}, {rule: string, size: number, stepFu
   handleSubmit(event: SyntheticEvent){
     const intRule = parseInt(this.state.rule)
     if (isNaN(intRule)){
-      alert("String must be numeric")
       return
     }
 
@@ -383,7 +409,6 @@ class Elementary extends React.Component<{}, {rule: string, size: number, stepFu
 
     const intRule = parseInt(target.value)
     if (isNaN(intRule)){
-      alert("String must be numeric")
       return
     }
 
