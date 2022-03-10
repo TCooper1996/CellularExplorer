@@ -28,14 +28,16 @@ const patterns: {groupName: string, patterns: {name: string, pattern: booleanGri
   {groupName: "oscillators",
   patterns: [
     {name: "blinker",
-      pattern: [[true],
-                [true],
-                [true]]},
+      pattern: [[false, true, false],
+                [false, true, false],
+                [false, true, false]]},
   
     {name: "toad",
     pattern: [
+              [false, false, false, false],
               [false, true, true, true],
               [true, true, true, false],
+              [false, false, false, false],
               ]},
     {name: "beacon",
     pattern: [[true, true, false, false],

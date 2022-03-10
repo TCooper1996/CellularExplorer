@@ -178,8 +178,11 @@ It only has one direct child, the prefabContainer, but prefabAnchor is display:f
 .prefabBoardGrid{
   display: flex;
   flex-direction: column;
-  --margin-left: auto;
-  --margin: auto;
+}
+
+.prefabBoardGrid .cell.dead{
+  opacity: 25%;
+  border-color: #cfcfcf;
 }
 
 .prefabBoardGrid ul{
@@ -333,15 +336,12 @@ It only has one direct child, the prefabContainer, but prefabAnchor is display:f
 
 /*--------- Elementary Board--------------*/
 #ElementaryMainDiv {
-  width: 80vw;
+  width: 60vw;
+  height: 40vw;
   margin: auto;
 }
 
 
-#ElementaryMainDiv .cell {
-  width: 2vw;
-  height: 2vw;
-}
 
 /*--------- Menu Bar -----------*/
 #menuBar {
