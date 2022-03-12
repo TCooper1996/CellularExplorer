@@ -17,11 +17,13 @@
   margin: 40px;
 }
 
-#mainDiv > div {
+#mainDiv > * {
   grid-row: 1;
   grid-column: 1;
   margin: 0 auto;
 }
+
+
 
 #mainBoardContainer{
   width: 25vw;
