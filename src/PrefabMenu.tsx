@@ -1,7 +1,6 @@
-import React, {useState, useRef, SyntheticEvent} from 'react';
-import {CellGrid, Cell, GridMap, CopyGrid, Create2DArray, UpdateCells} from './CellTypes';
+import React, {useState, useRef, SyntheticEvent, useEffect} from 'react';
+import {printGrid, CellGrid, Cell, GridMap, CopyGrid, Create2DArray, UpdateCells} from './CellTypes';
 import {patterns} from './cellPatterns';
-import { createRenderer } from 'react-dom/test-utils';
 
 
 interface Automaton{
@@ -12,27 +11,12 @@ interface Automaton{
   type: string;
 }
 
-interface RenderableAutomaton{
-    automaton: Automaton
-    renderer: RenderFunction
-}
-
-interface PrefabButtonArguments{
-    automaton: Automaton,
-    callbacks?: MouseCallbacks,
-}
 
 interface MouseCallbacks{
     onMouseEnter: () => void
     onMouseLeave: () => void
 }
 
-interface PrefabGrid{
-    // The entire grid that is used by UpdateCells
-    totalGrid: CellGrid,
-    // A smaller 
-    viewableGrid: CellGrid
-}
 
 type ButtonClickCallback = (grid: CellGrid, name: string) => void
 type RenderFunction = () => JSX.Element
@@ -43,110 +27,89 @@ type Action = () => void
 const buttonXDistance = 20
 const buttonYDistance = 10
 const bottomYAxis = 32
-const automata = GetAutomata()
 const dummyCallback = () => {}
-/* const automataMap: Map<string, Automaton> = new Map(
-    GetAutomata().map(a => [a.name, a] as [string, Automaton]) */
-//)
 
-class PrefabMenu extends React.Component<{onButtonClick: ButtonClickCallback}, {selectedPrefabName: string, isSelectedFunction: IsSelectedFunction, prefabButtons: RenderableAutomaton[]}>{
-    constructor(props: {onButtonClick: ButtonClickCallback}){
-        super(props)
+
+
+// The oscillator prefabs, which are displayed on the bottom row, will animate on hover.
+// This function handles their local state.
+function RenderOscillator(props: {a: Automaton, onClick: Action, isSelected: (name:string)=>boolean}){
+    const {a, onClick, isSelected} = props
+    const [grid, updateGrid] = useState(CopyGrid(a.grid))
+    const ref = useRef(grid)
     
+    // To avoid worrying about using a timeout variable that is sometimes undefined, I use a function which, before the mouse hovers over a prefab,
+    // does nothing, but afterwards, will clear the timeout variable in the onMouseEnter function.
+    const [clearTimer, updateClearTimer] = useState(() => () => {})
 
-        const CreateRenderableAutomaton = (a: Automaton):RenderableAutomaton => {
-            return {automaton: a, renderer: this.createRenderFunction(a)}
-        }
+    const updateState = (prevGrid?:CellGrid) => {
+        updateGrid(prev => {
+            ref.current = prevGrid ? prevGrid : UpdateCells(prev)
+            return ref.current
+        })
+    }
 
-        const isSelected = (name: string) => false 
+    // Replace automatons grid with current animated grid.
+    const automatonToRender = {...a, grid:ref.current}
+
+    const onMouseEnter = () =>{
+
+        const timer = setInterval(() => {
+            updateState()
+            
+        }, 500)
+        updateClearTimer(() => () => clearInterval(timer))
+
+    }
+
+    // Clear timer and return renderFunction to its orginal function.
+    const onMouseLeave = () => {
+        clearTimer()
+        updateState(a.grid)
+    }
+
+    return RenderPattern(automatonToRender, onClick, isSelected, {onMouseEnter: onMouseEnter, onMouseLeave: onMouseLeave})
+}
+
+function PrefabMenu(props: {onButtonClick:ButtonClickCallback, isSelected:IsSelectedFunction}){
+    
+        const prefabs = GetAutomata().map(a => {
+            const onClick = () => props.onButtonClick(a.grid, a.name)
+            const isSelected = (name:string) => props.isSelected(name)
+            const isOscillator = a.type === "oscillators"
+            return (<div>
+                {isOscillator
+                ? <RenderOscillator a={a} onClick={onClick} isSelected={isSelected}/>
+                : RenderPattern(a, onClick, isSelected)
+            }</div>)})
+                //return renderPattern(a, props.onButtonClick, props.isSelected}))
         
-        const prefabs = GetAutomata().map(CreateRenderableAutomaton)
-            //{
-              //  const callbacks = (a.type === "oscillators") ? this.buttonStateHandler(a.name, a.grid) : null
-                //return {callbacks: this.buttonStateHandler(a.name, a.type, a.grid), automaton:a}})
-        this.state = {isSelectedFunction: isSelected, selectedPrefabName: "", prefabButtons: prefabs}
-        
-    }
-
-
-    // The oscillator prefabs, which are displayed on the bottom row, will animate on hover.
-    // This function handles their local state.
-    createOscillatorRenderer(a: Automaton, onClick: Action, isSelected: (name:string)=>boolean){
-
-        // To avoid worrying about using a timeout variable that is sometimes undefined, I use a function which, before the mouse hovers over a prefab,
-        // does nothing, but afterwards, will clear the timeout variable in the onMouseEnter function.
-        let clearTimer = dummyCallback
-        let automatonToRender = {...a}
-
-        const onMouseEnter = () =>{
-            let animatedPattern = CopyGrid(a.grid)
-
-            const timer = setInterval(() => {
-                animatedPattern = UpdateCells(animatedPattern)
-                automatonToRender = {...a, grid:animatedPattern}
-                this.setState(this.state) //Force re-render.
-                
-            }, 500)
-            clearTimer = () => {clearInterval(timer)}
-
-        }
-
-        // Clear timer and return renderFunction to its orginal function.
-        const onMouseLeave = () => {
-            clearTimer()
-            automatonToRender = a
-            this.setState(this.state) //Force re-render
-        }
-
-        return () => renderPattern(automatonToRender, onClick, isSelected, {onMouseEnter: onMouseEnter, onMouseLeave: onMouseLeave})
-    }
-
-
-
-    createRenderFunction(a: Automaton): RenderFunction{
-        const onClick = () => this.props.onButtonClick(a.grid, a.name)
-        const isSelected = (name:string) => this.state.isSelectedFunction(name)
-        if (a.type === "oscillators"){
-            return this.createOscillatorRenderer(a, onClick, isSelected)
-        }else{
-            return () => renderPattern(a, onClick, isSelected)
-        }
-
-    }
-
-
-
-    render(){
-        const renderedButtons = this.state.prefabButtons.map(a => a.renderer())
-
         return(
         <ul id={"prefabMenu"}>
-            {renderedButtons}
+            {prefabs}
         </ul>
         )
-    }
 
+        
 }
 
 
-
-//Renders a single automaton
-function renderPattern(automaton:Automaton, onClick: Action, isSelected: (name:string)=>boolean, callbacks?:MouseCallbacks){
-    const {onMouseEnter, onMouseLeave} = callbacks ? callbacks : {onMouseEnter: dummyCallback, onMouseLeave: dummyCallback}
+ //Renders a single automaton
+function RenderPattern(automaton:Automaton, onClick: Action, isSelected: (name:string)=>boolean, callbacks?:MouseCallbacks){
     const {left, top, grid, name, type} = automaton
     const fontSize = name.length > 9 ? "0.5vw" : "1vw"
     const className = "prefabContainer" + (isSelected(name) ? " selectedPrefab" : "") 
     
     return (
     <li key={name} className="prefabAnchor" style={{left: left, top: top}}>
-        <PrefabButton className={className} prefabName={name} grid={grid} fontSize={fontSize} onClick={onClick} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}/>
+        <PrefabButton className={className} prefabName={name} grid={grid} fontSize={fontSize} onClick={onClick} onMouseEnter={callbacks?.onMouseEnter} onMouseLeave={callbacks?.onMouseLeave}/>
     </li>
     )
 
-}
+} 
 
 // Determines the structure of the prefab button and issues callbacks
-function PrefabButton(props: {className:string, prefabName:string, grid:CellGrid, fontSize:string, onClick:any, onMouseEnter:Action, onMouseLeave:Action}){
+export function PrefabButton(props: {className:string, prefabName:string, grid:CellGrid, fontSize:string, onClick?:any, onMouseEnter?:Action, onMouseLeave?:Action}){
     const {className, prefabName, grid, fontSize, onClick, onMouseEnter, onMouseLeave} = props
     return (
         <div className={className} onClick={onClick} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
@@ -170,7 +133,6 @@ function PrefabBoardGrid(props: {name: string; grid: Cell[][]}){
   const paddingTop = height === 1 ? 0 : (1 - height)/2
   const paddingLeft = width === 1 ? 0 : (1 - width)/2
   const fmt = (x:number) => x*100+"%"
-
 
   return(
     <div className={className}

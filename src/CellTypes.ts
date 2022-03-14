@@ -70,6 +70,11 @@ export function UpdateCells<CellType extends Cell>(grid: CellType[][]):CellType[
   return GridMap(grid, judgeCell)
 
 }
+
+export function printGrid(g: Cell[][]){
+  g.forEach(r => {console.log(r.map(x => x.isAlive ? "O" : "_").join()); console.log()})
+}
+
 const IndicesInBounds = (x:number, y:number, xMax:number, yMax:number) => 
       x >= 0 && y >= 0
       && x <= xMax && y <= yMax 
